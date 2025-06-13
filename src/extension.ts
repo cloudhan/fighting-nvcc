@@ -22,7 +22,7 @@ export async function activate(context: vscode.ExtensionContext) {
         return [];
       }
 
-      const startIndex = filePathMatch?.index??0
+      const startIndex = filePathMatch?.index ?? 0
       const length = filePathMatch[0].length;
       const lineNumber = parseInt(filePathMatch[1]);
       const filePath = filePathMatch[2];
@@ -85,4 +85,4 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(terminalLinkProvider);
 }
 
-export function deactivate() {}
+export function deactivate() { }
