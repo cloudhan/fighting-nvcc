@@ -1,26 +1,88 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
+import * as path from 'path';
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+type TerminalLinkWithData = vscode.TerminalLink & { data: any };
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "linkify-nvcc" is now active!');
+export async function activate(context: vscode.ExtensionContext) {
+  // console.log('"fighting-nvcc" is now active!');
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('linkify-nvcc.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Linkify nvcc!');
-	});
+  // Register the terminal link provider
+  const terminalLinkProvider = vscode.window.registerTerminalLinkProvider({
+    provideTerminalLinks: (context, token) => {
+      const line = context.line as string;
 
-	context.subscriptions.push(disposable);
+      if (!line.startsWith('                instantiation of "')) {
+        return [];
+      }
+
+      // Also look for file paths
+      const filePathPattern = /at line (\d+) of (.*)$/;
+      const filePathMatch = line.match(filePathPattern);
+      if (!filePathMatch) {
+        return [];
+      }
+
+      const startIndex = filePathMatch?.index??0
+      const length = filePathMatch[0].length;
+      const lineNumber = parseInt(filePathMatch[1]);
+      const filePath = filePathMatch[2];
+
+      return [
+        {
+          startIndex,
+          length,
+          tooltip: 'Open template instantiation details',
+          data: {
+            templateInfo: "find link: " + filePath + ":" + lineNumber,
+            filePath: filePath,
+            lineNumber: lineNumber
+          }
+        } as TerminalLinkWithData
+      ];
+    },
+
+    handleTerminalLink: async (link) => {
+      try {
+        // Get the file path and line number from the link data
+        const filePath = (link as TerminalLinkWithData).data.filePath;
+        const lineNumber = (link as TerminalLinkWithData).data.lineNumber;
+
+        // Try to find the file in the workspace
+        let fullPath = filePath;
+
+        // If the path is not absolute, try to resolve it relative to the workspace
+        if (!path.isAbsolute(filePath)) {
+          const workspaceFolders = vscode.workspace.workspaceFolders;
+          if (workspaceFolders && workspaceFolders.length > 0) {
+            fullPath = path.join(workspaceFolders[0].uri.fsPath, filePath);
+          }
+        }
+
+        // Create a URI for the file
+        const fileUri = vscode.Uri.file(fullPath);
+
+        console.log(`Opening file: ${filePath} at line ${lineNumber}`);
+
+        // Open the document and show it in the editor
+        const document = await vscode.workspace.openTextDocument(fileUri);
+        const editor = await vscode.window.showTextDocument(document);
+
+        // Position the cursor at the specified line
+        const position = new vscode.Position(lineNumber - 1, 0);
+        editor.selection = new vscode.Selection(position, position);
+        editor.revealRange(
+          new vscode.Range(position, position),
+          vscode.TextEditorRevealType.InCenter
+        );
+
+        vscode.window.showInformationMessage(`Opened ${filePath} at line ${lineNumber}`);
+      } catch (error) {
+        vscode.window.showErrorMessage(`Failed to open file: ${error}`);
+      }
+    }
+  });
+
+  context.subscriptions.push(terminalLinkProvider);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {}
