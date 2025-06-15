@@ -76,6 +76,17 @@ export async function activate(context: vscode.ExtensionContext) {
           }
         }
 
+        // Check if the file exists
+        try {
+            await vscode.workspace.fs.stat(vscode.Uri.file(fullPath));
+        } catch (error) {
+            if (error instanceof vscode.FileSystemError) {
+                vscode.window.showErrorMessage(`Failed to open ${fullPath}`);
+                return;
+            }
+            throw error;
+        }
+
         // Create a URI for the file
         const fileUri = vscode.Uri.file(fullPath);
 
