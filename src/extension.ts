@@ -4,8 +4,8 @@ import * as path from 'path';
 type TerminalLinkWithData = vscode.TerminalLink & { data: any };
 
 function rsplit(str: string, sep: string, maxsplit: number) {
-    var segments = str.split(sep);
-    return maxsplit ? [ segments.slice(0, -maxsplit).join(sep) ].concat(segments.slice(-maxsplit)) : segments;
+  var segments = str.split(sep);
+  return maxsplit ? [segments.slice(0, -maxsplit).join(sep)].concat(segments.slice(-maxsplit)) : segments;
 }
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -34,18 +34,29 @@ export async function activate(context: vscode.ExtensionContext) {
       const lineNumber = parseInt(lineNumberFilePath[0]);
       const filePath = lineNumberFilePath[1];
 
-      return [
-        {
-          startIndex,
-          length,
-          tooltip: 'Open template instantiation details',
-          data: {
-            templateInfo: "find link: " + filePath + ":" + lineNumber,
-            filePath: filePath,
-            lineNumber: lineNumber
-          }
-        } as TerminalLinkWithData
-      ];
+      let ret = []
+
+      ret.push({
+        startIndex,
+        length,
+        tooltip: 'Open file',
+        data: {
+          filePath: filePath,
+          lineNumber: lineNumber
+        }
+      } as TerminalLinkWithData);
+
+      ret.push({
+        startIndex: 16,
+        length: 16,
+        tooltip: 'Open template instantiation details',
+        data: {
+          filePath: filePath,
+          lineNumber: lineNumber
+        }
+      } as TerminalLinkWithData);
+
+      return ret;
     },
 
     handleTerminalLink: async (link) => {
