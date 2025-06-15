@@ -3,6 +3,11 @@ import * as path from 'path';
 
 type TerminalLinkWithData = vscode.TerminalLink & { data: any };
 
+function rsplit(str: string, sep: string, maxsplit: number) {
+    var segments = str.split(sep);
+    return maxsplit ? [ segments.slice(0, -maxsplit).join(sep) ].concat(segments.slice(-maxsplit)) : segments;
+}
+
 export async function activate(context: vscode.ExtensionContext) {
   // console.log('"fighting-nvcc" is now active!');
 
@@ -16,16 +21,18 @@ export async function activate(context: vscode.ExtensionContext) {
       }
 
       // Also look for file paths
-      const filePathPattern = /at line (\d+) of (.*)$/;
-      const filePathMatch = line.match(filePathPattern);
-      if (!filePathMatch) {
+      const segments = rsplit(line, " at line ", 1);
+      if (segments.length == 1) {
         return [];
       }
 
-      const startIndex = filePathMatch?.index ?? 0
-      const length = filePathMatch[0].length;
-      const lineNumber = parseInt(filePathMatch[1]);
-      const filePath = filePathMatch[2];
+      const startIndex = segments[0].length + 1;
+      const length = "at line ".length + segments[1].length;
+
+      const lineNumberFilePath = segments[1].split(" of ");
+
+      const lineNumber = parseInt(lineNumberFilePath[0]);
+      const filePath = lineNumberFilePath[1];
 
       return [
         {
@@ -61,7 +68,7 @@ export async function activate(context: vscode.ExtensionContext) {
         // Create a URI for the file
         const fileUri = vscode.Uri.file(fullPath);
 
-        console.log(`Opening file: ${filePath} at line ${lineNumber}`);
+        // console.log(`Opening file: ${filePath} at line ${lineNumber}`);
 
         // Open the document and show it in the editor
         const document = await vscode.workspace.openTextDocument(fileUri);
@@ -75,7 +82,7 @@ export async function activate(context: vscode.ExtensionContext) {
           vscode.TextEditorRevealType.InCenter
         );
 
-        vscode.window.showInformationMessage(`Opened ${filePath} at line ${lineNumber}`);
+        // vscode.window.showInformationMessage(`Opened ${filePath} at line ${lineNumber}`);
       } catch (error) {
         vscode.window.showErrorMessage(`Failed to open file: ${error}`);
       }
